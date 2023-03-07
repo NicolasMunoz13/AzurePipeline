@@ -5,8 +5,6 @@ trigger:
     - master
     - feature/*
 
-pool:
- name: local
 
 resources:
 - repo: self

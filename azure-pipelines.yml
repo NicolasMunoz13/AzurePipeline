@@ -5,12 +5,12 @@ trigger:
     - master
     - feature/*
 
-
+pool:
+ name: local
 
 resources:
 - repo: self
 queue:
-  name: local
   demands: 
   - msbuild
   - visualstudio

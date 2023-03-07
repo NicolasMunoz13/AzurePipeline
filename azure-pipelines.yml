@@ -10,11 +10,7 @@ pool:
 
 resources:
 - repo: self
-queue:
-  demands: 
-  - msbuild
-  - visualstudio
-  - vstest
+
 
 steps:
 - task: NuGetCommand@2

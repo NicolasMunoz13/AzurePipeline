@@ -5,10 +5,12 @@ trigger:
     - master
     - feature/*
 
+
+
 resources:
 - repo: self
 queue:
-  name: Hosted VS2017
+  name: local
   demands: 
   - msbuild
   - visualstudio

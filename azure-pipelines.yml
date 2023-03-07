@@ -33,7 +33,11 @@ steps:
 
 
 - powershell: ./ setEnvironmentVariables.ps1 
-  arguments: '$env:SAUCE_USERNAME $env:SAUCE_ACCESSKEY'
+- task: NuGetCommand@2
+  inputs:
+    command: 'restore'
+    restoreSolution: '**/*.sln'
+    feedsToUse: 'select'
 
   displayName: 'PowerShell Script'
 

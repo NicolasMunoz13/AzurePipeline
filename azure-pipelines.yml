@@ -1,39 +1,97 @@
-# ASP.NET Core (.NET Framework)
-- task: NuGetCommand@2
-  inputs:
-    command: 'restore'
-    restoreSolution: '**/*.sln'
-    feedsToUse: 'select'
-# Build and test ASP.NET Core projects targeting the full .NET Framework.
-# Add steps that publish symbols, save build artifacts, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
-
-trigger:
-- main
-
-pool:
-  vmImage: 'windows-latest'
-
-variables:
-  solution: '**/*.sln'
-  buildPlatform: 'Any CPU'
-  buildConfiguration: 'Release'
+resources:
+- repo: self
+queue:
+  name: Hosted VS2017
+  demands: 
+  - msbuild
+  - visualstudio
+  - vstest
 
 steps:
-- task: NuGetToolInstaller@1
+- task: NuGetToolInstaller@0
+  displayName: 'Use NuGet 4.4.1'
+  inputs:
+    versionSpec: 4.4.1
+
 
 - task: NuGetCommand@2
+  displayName: 'NuGet restore'
   inputs:
-    restoreSolution: '$(solution)'
+    restoreSolution: '$(Parameters.solution)'
+
 
 - task: VSBuild@1
+  displayName: 'Build solution'
   inputs:
-    solution: '$(solution)'
-    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:DesktopBuildPackageLocation="$(build.artifactStagingDirectory)\WebApp.zip" /p:DeployIisAppPath="Default Web Site"'
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
+    solution: '$(Parameters.solution)'
+
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:DesktopBuildPackageLocation="$(build.artifactstagingdirectory)\WebApp.zip" /p:DeployIisAppPath="Default Web Site"'
+
+    platform: '$(BuildPlatform)'
+
+    configuration: '$(BuildConfiguration)'
+
+
+- powershell: ./ setEnvironmentVariables.ps1 
+  arguments: '$env:SAUCE_USERNAME $env:SAUCE_ACCESSKEY'
+
+  displayName: 'PowerShell Script'
+
+- powershell: |
+   Write-Host "Build.SourcesDirectory=>$env:BUILD_SOURCESDIRECTORY"
+   Write-Host "System.DefaultWorkingDirectory=>$env:SYSTEM_DEFAULTWORKINGDIRECTORY" 
+  displayName: 'Display variables'
 
 - task: VSTest@2
+  displayName: 'Simple Selenium Test'
   inputs:
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
+    testAssemblyVer2: '**\$(BuildConfiguration)\**\Web.Tests.dll'
+
+    uiTests: true
+
+
+- task: VSTest@2
+  displayName: 'UI Tests'
+  inputs:
+    testAssemblyVer2: '**\$(BuildConfiguration)\**\SeleniumNunit.dll'
+
+    testFiltercriteria: '/TestCaseFilter:"Category=Cross browser tests"'
+
+    uiTests: true
+
+    runInParallel: true
+
+    platform: '$(BuildPlatform)'
+
+    configuration: '$(BuildConfiguration)'
+
+
+- task: VSTest@2
+  displayName: 'Unit Tests'
+  inputs:
+    testAssemblyVer2: '**\$(BuildConfiguration)\**\Unit.Tests.dll'
+
+    uiTests: true
+
+    runInParallel: false
+
+    platform: '$(BuildPlatform)'
+
+    configuration: '$(BuildConfiguration)'
+
+
+- task: PublishSymbols@2
+  displayName: 'Publish symbols path'
+  inputs:
+    SearchPattern: '**\bin\**\*.pdb'
+
+    PublishSymbols: false
+
+  continueOnError: true
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact'
+  inputs:
+    PathtoPublish: '$(build.artifactstagingdirectory)'
+
+    ArtifactName: '$(Parameters.ArtifactName)'
